@@ -1,47 +1,49 @@
-
-
 <?php
 
 
-session_start();
+	session_start();
 
-include("../config/config.php");
+	include("config/config.php");
 
-if(isset($name) && isset($password)) {
-	
-	$name = $_POST['name'];
-    $pass = $_POST['password'];
+	require('vendor/autoload.php'); // by tint
 
-	if($name == "" || $password == "") {
-		echo "Either username or password field is empty.";
-		echo "<br/>";
-		echo "<a href='login_action.php'>Go back</a>";
-	} else {
-		$result = mysqli_query($mysqli, "SELECT * FROM login WHERE username='$name'AND password=md5('$password')")
-					or die("Could not execute the select query.");
-		
-		$row = mysqli_fetch_assoc($result);
-		
-		if(is_array($row) && !empty($row)) {
-			$validuser = $row['name'];
-			$_SESSION['valid'] = $validuser;
-			$_SESSION['name'] = $row['name'];
-			$_SESSION['id'] = $row['id'];
+	use Rakit\Validation\Validator; // by tint
 
-		} else {
-			echo "Invalid username or password.";
-			echo "<br/>";
-			echo "<a href='login_action.php'>Go back</a>";
-		}
+	$validator = new Validator;
 
-		if(isset($_SESSION['valid'])) {
-			header('Location: login_action.php');
-		}
+	$validation = $validator->make($_POST + $_FILES, [
+		'name'                  => 'required',
+		'password'              => 'required|min:6'
+	]);
+
+	$validation->validate();
+
+	if ($validation->fails()) {
+		// handling errors
+		$errors = $validation->errors()->firstOfAll();
+		$_SESSION["errors"] = $errors;
+		header("Location:login.php");
+		exit;
 	}
-} else {
-	echo "Error";exit();
-	header('Location: login_action.php');	
-}
+		
+	$name = $_POST['name'];
+	$password = $_POST['password'];
+
+	$user = mysqli_query($mysqli, "SELECT * FROM login WHERE username='$name'AND password='$password'");
+			
+	$user = mysqli_fetch_assoc($user);
+
+	if($user){
+		$_SESSION["user"] = $user;
+		header("Location:index.php");
+		exit;
+	}
+
+	$errors = ["common" => "Username or Passowrd worng."];
+	$_SESSION["errors"] = $errors;
+
+	header("Location:login.php");
+	exit;
 
 
 ?>
